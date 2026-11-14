@@ -25,25 +25,25 @@ public class IdempotencyAdapter {
     public Optional<ChargeRender> process(final Charge charge, final ChargeRender render) {
         final var idempotency = toEntity(charge, render);
 
-        final var existing = repository.persist(idempotency);
+        final var result = repository.persist(idempotency);
 
-        if (existing.isEmpty()) {
-            log.info("persisted idempotency key {}", idempotency);
-            return Optional.empty();
+        if (result.isEmpty()) {
+            log.info("inserted idempotency key {}, correlationId {}", idempotency.getKey(), MDC.get(CORRELATION_ID));
+            return Optional.of(render);
         }
 
-        return existing.map(stored -> replay(stored, idempotency));
+        return result.map(v -> replay(v, idempotency));
     }
 
-    private static ChargeRender replay(final IdempotencyKeyEntity stored, final IdempotencyKeyEntity current) {
-        if (!stored.getRequestHash().equals(current.getRequestHash())) {
-            throw new ConflitIdempotencyException();
+    private ChargeRender replay(final IdempotencyKeyEntity entity, final IdempotencyKeyEntity currency) {
+        if (entity.getRequestHash().equals(currency.getRequestHash())) {
+            return ChargeRender.builder()
+                    .status(entity.getStatusHttp())
+                    .body(entity.getResponse())
+                    .build();
         }
 
-        log.info("idempotency replay {}, correlationId {}", stored, MDC.get(CORRELATION_ID));
-        return ChargeRender.builder()
-                .body(stored.getResponse())
-                .status(stored.getStatusHttp())
-                .build();
+        throw new ConflitIdempotencyException();
     }
+
 }
