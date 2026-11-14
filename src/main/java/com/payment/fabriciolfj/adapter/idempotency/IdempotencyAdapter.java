@@ -7,11 +7,13 @@ import com.payment.fabriciolfj.repository.idempotency.IdempotencyKeyEntity;
 import com.payment.fabriciolfj.repository.idempotency.IdempotencyRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.slf4j.MDC;
 import org.springframework.stereotype.Component;
 
 import java.util.Optional;
 
 import static com.payment.fabriciolfj.adapter.idempotency.IdempotencyKeyEntityMapper.toEntity;
+import static com.payment.fabriciolfj.constants.MdcConstants.CORRELATION_ID;
 
 @Slf4j
 @Component
@@ -38,7 +40,7 @@ public class IdempotencyAdapter {
             throw new ConflitIdempotencyException();
         }
 
-        log.info("idempotency replay {}", stored);
+        log.info("idempotency replay {}, correlationId {}", stored, MDC.get(CORRELATION_ID));
         return ChargeRender.builder()
                 .body(stored.getResponse())
                 .status(stored.getStatusHttp())
