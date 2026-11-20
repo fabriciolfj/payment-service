@@ -7,13 +7,10 @@ import com.payment.fabriciolfj.repository.idempotency.IdempotencyKeyEntity;
 import com.payment.fabriciolfj.repository.idempotency.IdempotencyRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.slf4j.MDC;
 import org.springframework.stereotype.Component;
-
 import java.util.Optional;
-
 import static com.payment.fabriciolfj.adapter.idempotency.IdempotencyKeyEntityMapper.toEntity;
-import static com.payment.fabriciolfj.constants.MdcConstants.CORRELATION_ID;
+
 
 @Slf4j
 @Component
@@ -28,8 +25,8 @@ public class IdempotencyAdapter {
         final var result = repository.persist(idempotency);
 
         if (result.isEmpty()) {
-            log.info("inserted idempotency key {}, correlationId {}", idempotency.getKey(), MDC.get(CORRELATION_ID));
-            return Optional.of(render);
+            log.info("inserted idempotency key {}", idempotency.getKey());
+            return Optional.empty();
         }
 
         return result.map(v -> replay(v, idempotency));

@@ -3,6 +3,7 @@ package com.payment.fabriciolfj.adapter.charge;
 import com.payment.fabriciolfj.adapter.idempotency.IdempotencyAdapter;
 import com.payment.fabriciolfj.model.Charge;
 import com.payment.fabriciolfj.model.ChargeRender;
+import com.payment.fabriciolfj.model.ChargeProcess;
 import com.payment.fabriciolfj.repository.charge.ChargeRepository;
 import com.payment.fabriciolfj.usecase.CreateChargeGateway;
 import lombok.RequiredArgsConstructor;
@@ -20,15 +21,19 @@ public class CreateChargeAdapter implements CreateChargeGateway {
     private final ChargeRepository repository;
 
     @Override
-    public ChargeRender process(final Charge charge, final ChargeRender render) {
-        return idempotencyAdapter.process(charge, render)
-                .orElseGet(() -> save(charge, render));
+    public ChargeProcess process(final Charge charge, final ChargeRender render) {
+        final var result = idempotencyAdapter.process(charge, render);
+        if (result.isEmpty()) {
+            save(charge);
+
+            return new ChargeProcess.ChargeCreated(render);
+        }
+
+        return new ChargeProcess.ChargeReplay(result.get());
     }
 
-    private ChargeRender save(final Charge charge, final ChargeRender render) {
+    private void save(final Charge charge) {
         repository.save(toEntity(charge));
         log.info("charge save success {}", charge.getId());
-
-        return render;
     }
 }
